@@ -1,0 +1,13 @@
+{
+    "model_name": "logistic_regression_adult",
+    "model_path": "models/model.joblib",
+    "dataset_name": "adult_income_test",
+    "dataset_path": "data/adult_test.csv",
+    "label_column": "income",
+    "positive_label": ">50K",
+    "sensitive_attribute": "sex",
+    "feature_columns": ["age", "education-num",
+     "capital-gain", "capital-loss",
+      "hours-per-week"],
+    "threshold": 0.1
+}
