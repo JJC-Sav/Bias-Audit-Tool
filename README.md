@@ -30,6 +30,10 @@ The audit pipeline:
 | **TPR** | Out of everyone who truly belongs to the positive class, how many did the model catch? |
 | **FPR** | Out of everyone who belongs to the negative class, how many did the model wrongly flag? |
 | **PPR** | Out of all predictions made, how often did the model predict the positive outcome? |
+| **FNR** | Out of everyone who truly belongs to the positive class, how many did the model miss? |
+| **Precision** | Out of everyone predicted as positive, how many actually were? |
+| **F1 Score** | Balance between Precision and TPR in a single number |
+| **Equalized Odds** | Checks whether both TPR and FPR gaps are within the threshold simultaneously |
 
 ---
 
