@@ -38,7 +38,7 @@ The audit pipeline:
 Clone the repository and install dependencies:
 
 ```bash
-git clone https://github.com/yourusername/ml-bias-detector.git
+git clone https://github.com/JJC-Sav/ml-bias-detector.git
 cd ml-bias-detector
 python -m venv venv
 venv\Scripts\activate        # Windows
