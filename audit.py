@@ -1,15 +1,13 @@
 # audit.py
-
-# This is the main auditing script. It loads a trained model and dataset,
-# runs predictions, computes fairness metrics per group, flags any
-# big differences between groups, and saves everything to a report file.
+# Main auditing script. Loads a trained model and dataset, runs predictions,
+# computes fairness metrics per group, flags disparities, and saves a report.
 
 import json
 import joblib
 import pandas as pd
 from sklearn.metrics import confusion_matrix
 
-# load the config file so I know what model, dataset, and settings to use
+# load the config file
 with open("config.json", "r") as f:
     config = json.load(f)
 
@@ -17,14 +15,14 @@ print("Config loaded")
 print(f"  Sensitive attribute: {config['sensitive_attribute']}")
 print(f"  Threshold: {config['threshold']}")
 
-# load the dataset and the trained model
+# load the dataset and model
 df = pd.read_csv(config["dataset_path"])
 model = joblib.load(config["model_path"])
 
 print(f"\nDataset loaded — {len(df)} rows")
 print(f"Model loaded — {type(model).__name__}")
 
-# run predictions on every row in the dataset
+# run predictions on every row
 X = df[config["feature_columns"]]
 predictions = model.predict(X)
 df["prediction"] = predictions
@@ -33,14 +31,13 @@ print(f"\nPredictions done — {len(predictions)} total")
 print("\nSample (first 10 rows):")
 print(df[[config["sensitive_attribute"], config["label_column"], "prediction"]].head(10))
 
-# convert the income label to 1s and 0s so the confusion matrix works
-# >50K = 1, <=50K = 0
+# convert label column to 1s and 0s so confusion matrix works
 positive_label = config["positive_label"]
 df["true_label"] = (df[config["label_column"]] == positive_label).astype(int)
 
-# --- metric functions ---
-# each one takes TP, TN, FP, FN and returns a single number
-# returns None if there's a division by zero situation
+# ── Metric functions ───────────────────────────────────────────────────────────
+# Each takes TP, TN, FP, FN and returns a single number.
+# Returns None if division by zero would occur.
 
 def compute_accuracy(TP, TN, FP, FN):
     total = TP + TN + FP + FN
@@ -49,27 +46,66 @@ def compute_accuracy(TP, TN, FP, FN):
     return (TP + TN) / total
 
 def compute_tpr(TP, TN, FP, FN):
-    # how many actual positives did the model catch?
+    # True Positive Rate — out of everyone who truly earns >50K,
+    # how many did the model correctly catch?
     denominator = TP + FN
     if denominator == 0:
         return None
     return TP / denominator
 
 def compute_fpr(TP, TN, FP, FN):
-    # how many actual negatives did the model wrongly flag?
+    # False Positive Rate — out of everyone who earns <=50K,
+    # how many did the model wrongly flag as high earners?
     denominator = FP + TN
     if denominator == 0:
         return None
     return FP / denominator
 
 def compute_ppr(TP, TN, FP, FN):
-    # out of all predictions, how many were labeled positive?
+    # Positive Prediction Rate — out of all predictions,
+    # how often did the model predict high income?
     total = TP + TN + FP + FN
     if total == 0:
         return None
     return (TP + FP) / total
 
-# --- compute metrics for each group ---
+def compute_fnr(TP, TN, FP, FN):
+    # False Negative Rate — out of everyone who truly earns >50K,
+    # how many did the model miss? (flip side of TPR)
+    denominator = TP + FN
+    if denominator == 0:
+        return None
+    return FN / denominator
+
+def compute_precision(TP, TN, FP, FN):
+    # Predictive Parity / Precision — out of everyone the model
+    # predicted as high earners, how many actually were?
+    denominator = TP + FP
+    if denominator == 0:
+        return None
+    return TP / denominator
+
+def compute_f1(TP, TN, FP, FN):
+    # F1 Score — balance between catching true positives
+    # and not making too many false predictions.
+    precision = compute_precision(TP, TN, FP, FN)
+    tpr = compute_tpr(TP, TN, FP, FN)
+    if precision is None or tpr is None:
+        return None
+    if precision + tpr == 0:
+        return None
+    return 2 * (precision * tpr) / (precision + tpr)
+
+def compute_equalized_odds(tpr_a, fpr_a, tpr_b, fpr_b):
+    # Equalized Odds — checks whether both TPR and FPR are
+    # equal across groups. Returns the max gap across both.
+    if any(v is None for v in [tpr_a, fpr_a, tpr_b, fpr_b]):
+        return None
+    tpr_gap = abs(tpr_a - tpr_b)
+    fpr_gap = abs(fpr_a - fpr_b)
+    return round(max(tpr_gap, fpr_gap), 4)
+
+# ── Compute metrics per group ──────────────────────────────────────────────────
 print(f"\nMetrics by group ({config['sensitive_attribute']})")
 print("-" * 60)
 
@@ -78,30 +114,33 @@ groups = df[sensitive_attr].unique()
 group_metrics = {}
 
 for group in groups:
-    # filter down to just this group
     group_df = df[df[sensitive_attr] == group]
     y_true = group_df["true_label"]
     y_pred = group_df["prediction"]
 
-    # get the confusion matrix values for this group
-    # confusion_matrix gives back [[TN, FP], [FN, TP]]
+    # confusion matrix gives [[TN, FP], [FN, TP]]
     cm = confusion_matrix(y_true, y_pred, labels=[0, 1])
     TN, FP, FN, TP = cm.ravel()
 
-    # compute all four metrics
-    accuracy = compute_accuracy(TP, TN, FP, FN)
-    tpr      = compute_tpr(TP, TN, FP, FN)
-    fpr      = compute_fpr(TP, TN, FP, FN)
-    ppr      = compute_ppr(TP, TN, FP, FN)
+    # compute all metrics
+    accuracy  = compute_accuracy(TP, TN, FP, FN)
+    tpr       = compute_tpr(TP, TN, FP, FN)
+    fpr       = compute_fpr(TP, TN, FP, FN)
+    ppr       = compute_ppr(TP, TN, FP, FN)
+    fnr       = compute_fnr(TP, TN, FP, FN)
+    precision = compute_precision(TP, TN, FP, FN)
+    f1        = compute_f1(TP, TN, FP, FN)
 
-    # save results so I can use them in the disparity analysis below
     group_metrics[group] = {
         "group_size": len(group_df),
         "TP": int(TP), "TN": int(TN), "FP": int(FP), "FN": int(FN),
-        "accuracy": round(accuracy, 4) if accuracy is not None else None,
-        "tpr":      round(tpr, 4)      if tpr      is not None else None,
-        "fpr":      round(fpr, 4)      if fpr      is not None else None,
-        "ppr":      round(ppr, 4)      if ppr      is not None else None,
+        "accuracy":  round(accuracy,  4) if accuracy  is not None else None,
+        "tpr":       round(tpr,       4) if tpr       is not None else None,
+        "fpr":       round(fpr,       4) if fpr       is not None else None,
+        "ppr":       round(ppr,       4) if ppr       is not None else None,
+        "fnr":       round(fnr,       4) if fnr       is not None else None,
+        "precision": round(precision, 4) if precision is not None else None,
+        "f1":        round(f1,        4) if f1        is not None else None,
     }
 
     print(f"\nGroup: {group} (n={len(group_df)})")
@@ -109,17 +148,19 @@ for group in groups:
     print(f"  Accuracy:                 {accuracy:.4f}")
     print(f"  True Positive Rate:       {tpr:.4f}")
     print(f"  False Positive Rate:      {fpr:.4f}")
+    print(f"  False Negative Rate:      {fnr:.4f}")
     print(f"  Positive Prediction Rate: {ppr:.4f}")
+    print(f"  Precision:                {precision:.4f}")
+    print(f"  F1 Score:                 {f1:.4f}")
 
-# --- disparity analysis ---
-# compare each pair of groups and flag metrics where the gap is too big
+# ── Disparity analysis and flagging ───────────────────────────────────────────
 print("\n" + "-" * 60)
 print("Disparity Analysis")
 print("-" * 60)
 
 threshold = config["threshold"]
 group_list = list(group_metrics.keys())
-metrics_to_check = ["accuracy", "tpr", "fpr", "ppr"]
+metrics_to_check = ["accuracy", "tpr", "fpr", "ppr", "fnr", "precision", "f1"]
 flagged_results = []
 
 for i in range(len(group_list)):
@@ -129,11 +170,11 @@ for i in range(len(group_list)):
 
         print(f"\nComparing: {group_a} vs {group_b}")
 
+        # check standard metrics
         for metric in metrics_to_check:
             val_a = group_metrics[group_a][metric]
             val_b = group_metrics[group_b][metric]
 
-            # skip if one of the values is missing
             if val_a is None or val_b is None:
                 print(f"  {metric.upper():<12} skipped (missing value)")
                 continue
@@ -144,7 +185,6 @@ for i in range(len(group_list)):
 
             print(f"  {metric.upper():<12} {group_a}={val_a:.4f}  {group_b}={val_b:.4f}  diff={disparity:.4f}{flag_marker}")
 
-            # save flagged results so I can put them in the report later
             if flagged:
                 flagged_results.append({
                     "metric": metric,
@@ -156,7 +196,27 @@ for i in range(len(group_list)):
                     "threshold": threshold
                 })
 
-# --- flagged results summary ---
+        # check equalized odds separately (uses both TPR and FPR)
+        eq_odds = compute_equalized_odds(
+            group_metrics[group_a]["tpr"], group_metrics[group_a]["fpr"],
+            group_metrics[group_b]["tpr"], group_metrics[group_b]["fpr"]
+        )
+        if eq_odds is not None:
+            flagged = eq_odds > threshold
+            flag_marker = " <- FLAGGED" if flagged else ""
+            print(f"  {'EQ_ODDS':<12} max gap={eq_odds:.4f}{flag_marker}")
+            if flagged:
+                flagged_results.append({
+                    "metric": "equalized_odds",
+                    "group_a": group_a,
+                    "group_b": group_b,
+                    "value_a": None,
+                    "value_b": None,
+                    "disparity": eq_odds,
+                    "threshold": threshold
+                })
+
+# ── Flagged results summary ────────────────────────────────────────────────────
 print("\n" + "-" * 60)
 print("Flagged Results")
 print("-" * 60)
@@ -168,41 +228,31 @@ if flagged_results:
 else:
     print("  Nothing flagged — no big disparities found.")
 
-# --- generate audit report ---
-
-# pull everything together into one dictionary and save it as report.json
-# this is the final output of the tool
-
+# ── Generate audit report ──────────────────────────────────────────────────────
 report = {
-    # identifiers so we know exactly what was audited
-    "model_name": config["model_name"],
-    "model_path": config["model_path"],
-    "dataset_name": config["dataset_name"],
-    "dataset_path": config["dataset_path"],
-
-    # audit settings that were used
+    "model_name":    config["model_name"],
+    "model_path":    config["model_path"],
+    "dataset_name":  config["dataset_name"],
+    "dataset_path":  config["dataset_path"],
     "audit_config": {
         "sensitive_attribute": config["sensitive_attribute"],
-        "label_column": config["label_column"],
-        "positive_label": config["positive_label"],
-        "threshold": config["threshold"],
-        "feature_columns": config["feature_columns"]
+        "label_column":        config["label_column"],
+        "positive_label":      config["positive_label"],
+        "threshold":           config["threshold"],
+        "feature_columns":     config["feature_columns"],
+        "metrics_computed": [
+            "accuracy", "tpr", "fpr", "ppr",
+            "fnr", "precision", "f1", "equalized_odds"
+        ]
     },
-
-    # per group metric results
-    "group_metrics": group_metrics,
-
-    # flagged disparities
+    "group_metrics":   group_metrics,
     "flagged_results": flagged_results,
-
-    # short disclaimer so nobody misreads the results
     "disclaimer": (
         "These results are descriptive only. They show differences in model "
         "performance across groups but do not imply legal or causal conclusions."
     )
 }
 
-# save the report to a file
 with open("report.json", "w") as f:
     json.dump(report, f, indent=4)
 
