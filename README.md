@@ -1,69 +1,181 @@
-# Bias-Audit-Tool
-A Python tool that audits ML models for demographic bias using fairness metrics (TPR, FPR, PPR) on the Adult Income dataset.
+# ml-bias-detector
 
----
+A lightweight bias detection and audit tool for binary classification machine learning models.
 
-# ML Bias Detection & Audit Tool
-
-A Python-based tool that audits machine learning models for demographic bias by computing fairness metrics across population subgroups. Built as a senior capstone project at Marian University.
+Give it a trained model and a labeled dataset, and it tells you whether the model is treating different demographic groups fairly. Results are saved to a structured, reproducible audit report.
 
 ---
 
 ## What It Does
 
-This tool trains a logistic regression classifier on the **Adult Income dataset** and evaluates its predictions through a fairness lens. Rather than just measuring overall accuracy, it breaks down performance by demographic group to surface hidden disparities in how the model treats different populations.
+Machine learning models are used in high-stakes decisions like hiring, lending, and admissions. A model that looks accurate overall can still behave very differently across demographic groups like gender or race. This tool makes that visible.
+
+The audit pipeline:
+
+1. Reads settings from `config.json`
+2. Loads the trained model and dataset
+3. Generates predictions for every record
+4. Splits predictions by the sensitive attribute (e.g. gender)
+5. Computes four fairness metrics per group using a confusion matrix
+6. Flags any metric where the gap between groups exceeds the threshold
+7. Saves a full audit report to `report.json`
 
 ---
 
-## Fairness Metrics Computed
+## Fairness Metrics
 
-| Metric | Description |
+| Metric | What it measures |
 |---|---|
-| **Accuracy** | Overall correctness per group |
-| **TPR (True Positive Rate)** | How often the model correctly predicts income >50K |
-| **FPR (False Positive Rate)** | How often the model incorrectly flags income >50K |
-| **PPR (Predicted Positive Rate)** | How frequently the model predicts the positive class |
+| **Accuracy** | How often the model was correct overall for that group |
+| **TPR** | Out of everyone who truly belongs to the positive class, how many did the model catch? |
+| **FPR** | Out of everyone who belongs to the negative class, how many did the model wrongly flag? |
+| **PPR** | Out of all predictions made, how often did the model predict the positive outcome? |
+
+---
+
+## Installation
+
+Clone the repository and install dependencies:
+
+```bash
+git clone https://github.com/yourusername/ml-bias-detector.git
+cd ml-bias-detector
+python -m venv venv
+venv\Scripts\activate        # Windows
+source venv/bin/activate     # Mac/Linux
+pip install -r requirements.txt
+```
+
+---
+
+## Quick Start
+
+**Step 1 — Set up an example model and dataset:**
+```bash
+python train_example_model.py
+```
+This downloads and cleans the Adult Income dataset, trains a logistic regression model, and generates `config.json`. Skip this step if you already have a trained model.
+
+**Step 2 — Run the audit:**
+```bash
+python audit.py
+```
+The tool will print per-group metrics, flag any disparities over the threshold, and save a full report to `report.json`.
+
+---
+
+## Configuration
+
+All settings are controlled through `config.json`:
+
+```json
+{
+    "model_name": "logistic_regression_adult",
+    "model_path": "models/model.joblib",
+    "dataset_name": "adult_income_test",
+    "dataset_path": "data/adult_test.csv",
+    "label_column": "income",
+    "positive_label": ">50K",
+    "sensitive_attribute": "sex",
+    "feature_columns": ["age", "education-num", "capital-gain", "capital-loss", "hours-per-week"],
+    "threshold": 0.1
+}
+```
+
+| Field | Description |
+|---|---|
+| `model_path` | Path to your saved `.joblib` model file |
+| `dataset_path` | Path to your labeled CSV dataset |
+| `label_column` | Column name containing the true labels |
+| `positive_label` | The value that counts as the positive outcome |
+| `sensitive_attribute` | Column to split groups by (e.g. `sex`, `race`) |
+| `feature_columns` | List of feature columns the model was trained on |
+| `threshold` | Gap size that triggers a flag (default: 0.1) |
+
+---
+
+## Example Results
+
+Using the Adult Income dataset from UCI with gender as the sensitive attribute:
+
+```
+Group: Male (n=4065)
+  Accuracy:                 0.7697
+  True Positive Rate:       0.3978
+  False Positive Rate:      0.0618
+  Positive Prediction Rate: 0.1665
+
+Group: Female (n=1968)
+  Accuracy:                 0.8892
+  True Positive Rate:       0.3532
+  False Positive Rate:      0.0381
+  Positive Prediction Rate: 0.0757
+
+Disparity Analysis
+------------------------------------------------------------
+  ACCURACY     Male=0.7697  Female=0.8892  diff=0.1195 <- FLAGGED
+  TPR          Male=0.3978  Female=0.3532  diff=0.0446
+  FPR          Male=0.0618  Female=0.0381  diff=0.0237
+  PPR          Male=0.1665  Female=0.0757  diff=0.0908
+```
+
+The model predicts high income for men more than twice as often as for women with similar backgrounds. Accuracy appears higher for women not because the model identifies high earners better, but because it defaults to predicting low income for women almost every time.
+
+---
+
+## Output — report.json
+
+After every audit run the tool saves a structured report:
+
+```json
+{
+    "model_name": "logistic_regression_adult",
+    "dataset_name": "adult_income_test",
+    "audit_config": { ... },
+    "group_metrics": { ... },
+    "flagged_results": [ ... ],
+    "disclaimer": "These results are descriptive only..."
+}
+```
+
+The report is fully reproducible — the same model, dataset, and config always produce the same output.
 
 ---
 
 ## Tech Stack
 
-- **Python**
-- **scikit-learn** — logistic regression model
-- **pandas** — data manipulation
-- **NumPy** — numerical computation
+- **Python 3.12+**
+- **pandas** — data loading, cleaning, and group splitting
+- **scikit-learn** — model predictions and confusion matrix computation
+- **joblib** — model serialization
 
 ---
 
-## How to Run
+## Roadmap
 
-1. Clone the repository:
-```bash
-   git clone https://github.com/JJC-Sav/Bias-Audit-Tool.git
-   cd Bias-Audit-Tool
-```
-
-2. Install dependencies:
-```bash
-   pip install -r requirements.txt
-```
-
-3. Run the audit:
-```bash
-   python main.py
-```
-
-4. The tool will output a structured audit report showing fairness metrics broken down by demographic group.
+- [ ] Additional fairness metrics (Equalized Odds, Predictive Parity)
+- [ ] Multiple sensitive attributes simultaneously
+- [ ] Support for TensorFlow, PyTorch, and ONNX models
+- [ ] Dataset bias detection before training
+- [ ] Automated PDF report generation
+- [ ] REST API endpoint
+- [ ] Front end web interface
+- [ ] Publish as installable package (`pip install ml-bias-detector`)
 
 ---
 
-## Why It Matters
+## Dataset
 
-ML models can produce biased outcomes even when overall accuracy looks fine. This tool makes those disparities visible and measurable — a critical step toward building fairer AI systems.
+The example uses the [Adult Income dataset](https://archive.ics.uci.edu/ml/datasets/adult) from the UCI Machine Learning Repository (Dua & Graff, 2019). It contains 1994 US Census data and is widely used in fairness research.
 
 ---
 
-## Author
+## Disclaimer
 
-Juan Cisneros — Computer Science, Marian University '26  
-[LinkedIn](https://linkedin.com/in/juanjcisneros)
+Audit results are descriptive only. They show differences in model performance across groups but do not imply legal or causal conclusions about fairness or discrimination.
+
+---
+
+## License
+
+MIT License — free to use, modify, and distribute.
