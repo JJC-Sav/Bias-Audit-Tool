@@ -20,7 +20,7 @@ COLUMNS = [
 
 print("Loading Adult Income dataset...")
 df = pd.read_csv(
-    "adult.csv", names=COLUMNS, header=None, skipinitialspace=True  # removes leading spaces in values
+    "examples/adult.csv", names=COLUMNS, header=None, skipinitialspace=True
 )
 
 # ── 3. Cleaning the data ──────────────────────────────────────────────────────────
@@ -78,7 +78,9 @@ print("Model saved to models/model.joblib")
 
 # ── 7. Save a config.json ─────────────────────────────────────────────────────
 config = {
+    "model_name": "logistic_regression_adult",
     "model_path": "models/model.joblib",
+    "dataset_name": "adult_income_test",
     "dataset_path": "data/adult_test.csv",
     "label_column": "income",
     "positive_label": ">50K",
