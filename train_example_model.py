@@ -84,7 +84,7 @@ config = {
     "dataset_path": "data/adult_test.csv",
     "label_column": "income",
     "positive_label": ">50K",
-    "sensitive_attribute": "sex",
+    "sensitive_attributes": ["sex", "race"],
     "feature_columns": FEATURE_COLUMNS,
     "threshold": 0.1
 }
