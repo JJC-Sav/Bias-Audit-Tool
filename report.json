@@ -1,0 +1,55 @@
+{
+    "model_name": "logistic_regression_adult",
+    "model_path": "models/model.joblib",
+    "dataset_name": "adult_income_test",
+    "dataset_path": "data/adult_test.csv",
+    "audit_config": {
+        "sensitive_attribute": "sex",
+        "label_column": "income",
+        "positive_label": ">50K",
+        "threshold": 0.1,
+        "feature_columns": [
+            "age",
+            "education-num",
+            "capital-gain",
+            "capital-loss",
+            "hours-per-week"
+        ]
+    },
+    "group_metrics": {
+        "Male": {
+            "group_size": 4065,
+            "TP": 504,
+            "TN": 2625,
+            "FP": 173,
+            "FN": 763,
+            "accuracy": 0.7697,
+            "tpr": 0.3978,
+            "fpr": 0.0618,
+            "ppr": 0.1665
+        },
+        "Female": {
+            "group_size": 1968,
+            "TP": 83,
+            "TN": 1667,
+            "FP": 66,
+            "FN": 152,
+            "accuracy": 0.8892,
+            "tpr": 0.3532,
+            "fpr": 0.0381,
+            "ppr": 0.0757
+        }
+    },
+    "flagged_results": [
+        {
+            "metric": "accuracy",
+            "group_a": "Male",
+            "group_b": "Female",
+            "value_a": 0.7697,
+            "value_b": 0.8892,
+            "disparity": 0.1195,
+            "threshold": 0.1
+        }
+    ],
+    "disclaimer": "These results are descriptive only. They show differences in model performance across groups but do not imply legal or causal conclusions."
+}
