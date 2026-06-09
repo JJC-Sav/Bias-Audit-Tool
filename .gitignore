@@ -1,0 +1,39 @@
+# Virtual environment
+venv/
+.env/
+env/
+
+# Generated data and model files
+data/
+models/
+report.json
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# Distribution and packaging (for later when we publish)
+build/
+dist/
+*.egg-info/
+*.egg
+
+# Jupyter notebooks checkpoints
+.ipynb_checkpoints/
+
+# Personal notes
+goal.txt
+adult.txt
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# VSCode settings
+.vscode/
+
+# pytest cache
+.pytest_cache/
