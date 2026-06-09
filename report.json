@@ -161,7 +161,8 @@
     "audit_config": {
         "sensitive_attributes": [
             "sex",
-            "race"
+            "race",
+            "gender"
         ],
         "label_column": "income",
         "positive_label": ">50K",

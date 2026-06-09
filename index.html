@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ML Bias Detector</title>
+  <style>
+    /* ── Reset & Base ─────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy:   #1E3A5F;
+      --blue:   #2C6FAC;
+      --lblue:  #EBF4FF;
+      --green:  #166534;
+      --gbg:    #F0FDF4;
+      --red:    #991B1B;
+      --rbg:    #FEF2F2;
+      --gray1:  #F8FAFC;
+      --gray2:  #E2E8F0;
+      --gray3:  #94A3B8;
+      --gray4:  #475569;
+      --dark:   #0F172A;
+      --white:  #FFFFFF;
+      --radius: 10px;
+      --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+      --shadow-md: 0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.04);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--gray1);
+      color: var(--dark);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* ── Nav ──────────────────────────────────────────────────────────── */
+    nav {
+      background: var(--navy);
+      padding: 0 2rem;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: var(--shadow-md);
+    }
+    .nav-brand {
+      color: var(--white);
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+    .nav-brand span { color: #93C5FD; }
+    .nav-badge {
+      background: rgba(255,255,255,0.12);
+      color: #93C5FD;
+      font-size: 0.7rem;
+      padding: 2px 8px;
+      border-radius: 99px;
+      margin-left: 10px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    /* ── Hero ─────────────────────────────────────────────────────────── */
+    .hero {
+      background: linear-gradient(135deg, var(--navy) 0%, #2C5282 100%);
+      color: var(--white);
+      padding: 3.5rem 2rem 3rem;
+      text-align: center;
+    }
+    .hero h1 {
+      font-size: 2.2rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      margin-bottom: 0.75rem;
+    }
+    .hero p {
+      font-size: 1.05rem;
+      color: #BFDBFE;
+      max-width: 560px;
+      margin: 0 auto;
+    }
+
+    /* ── Main layout ──────────────────────────────────────────────────── */
+    main {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+    }
+
+    /* ── Card ─────────────────────────────────────────────────────────── */
+    .card {
+      background: var(--white);
+      border: 1px solid var(--gray2);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      margin-bottom: 1.5rem;
+      overflow: hidden;
+    }
+    .card-header {
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid var(--gray2);
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+    .card-header h2 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--navy);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .card-body { padding: 1.5rem; }
+
+    /* ── Step badge ───────────────────────────────────────────────────── */
+    .step-badge {
+      width: 26px; height: 26px;
+      background: var(--navy);
+      color: var(--white);
+      border-radius: 50%;
+      font-size: 0.75rem;
+      font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+
+    /* ── Form ─────────────────────────────────────────────────────────── */
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+    .form-group { display: flex; flex-direction: column; gap: 0.35rem; }
+    .form-group.full { grid-column: 1 / -1; }
+    label {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--gray4);
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+    .label-hint {
+      font-size: 0.78rem;
+      color: var(--gray3);
+      font-weight: 400;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+    input[type="text"], input[type="number"] {
+      border: 1.5px solid var(--gray2);
+      border-radius: 6px;
+      padding: 0.6rem 0.85rem;
+      font-size: 0.9rem;
+      color: var(--dark);
+      transition: border-color 0.15s;
+      outline: none;
+      width: 100%;
+      background: var(--white);
+    }
+    input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(44,111,172,0.12); }
+
+    /* Threshold slider */
+    .slider-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    input[type="range"] {
+      flex: 1;
+      accent-color: var(--blue);
+      cursor: pointer;
+    }
+    .slider-val {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--blue);
+      min-width: 36px;
+      text-align: right;
+    }
+
+    /* Tags input */
+    .tags-input-wrap {
+      border: 1.5px solid var(--gray2);
+      border-radius: 6px;
+      padding: 0.4rem 0.6rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      cursor: text;
+      min-height: 42px;
+      background: var(--white);
+      transition: border-color 0.15s;
+    }
+    .tags-input-wrap:focus-within {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(44,111,172,0.12);
+    }
+    .tag {
+      background: var(--lblue);
+      color: var(--blue);
+      border-radius: 4px;
+      padding: 2px 8px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .tag button {
+      background: none; border: none; cursor: pointer;
+      color: var(--blue); font-size: 0.85rem; line-height: 1;
+      padding: 0; opacity: 0.7;
+    }
+    .tag button:hover { opacity: 1; }
+    .tags-input {
+      border: none; outline: none; font-size: 0.88rem;
+      color: var(--dark); min-width: 120px; flex: 1;
+      background: transparent; padding: 2px 4px;
+    }
+    .tags-hint {
+      font-size: 0.75rem;
+      color: var(--gray3);
+      margin-top: 3px;
+    }
+
+    /* ── Run button ───────────────────────────────────────────────────── */
+    .btn-run {
+      width: 100%;
+      background: var(--navy);
+      color: var(--white);
+      border: none;
+      border-radius: 8px;
+      padding: 0.85rem;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+      margin-top: 0.5rem;
+      letter-spacing: 0.2px;
+    }
+    .btn-run:hover { background: #162d4a; }
+    .btn-run:active { transform: scale(0.99); }
+    .btn-run:disabled { background: var(--gray3); cursor: not-allowed; }
+
+    /* ── Status ───────────────────────────────────────────────────────── */
+    .status {
+      display: none;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.75rem 1rem;
+      border-radius: 6px;
+      font-size: 0.88rem;
+      font-weight: 500;
+      margin-top: 0.75rem;
+    }
+    .status.running { display: flex; background: var(--lblue); color: var(--blue); }
+    .status.error   { display: flex; background: var(--rbg);   color: var(--red); }
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid currentColor;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Results ──────────────────────────────────────────────────────── */
+    #results { display: none; }
+
+    /* Summary cards */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .stat-card {
+      background: var(--white);
+      border: 1px solid var(--gray2);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.5rem;
+      text-align: center;
+      box-shadow: var(--shadow);
+    }
+    .stat-card .stat-num {
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--navy);
+      line-height: 1;
+      margin-bottom: 0.3rem;
+    }
+    .stat-card .stat-num.flagged { color: var(--red); }
+    .stat-card .stat-label {
+      font-size: 0.8rem;
+      color: var(--gray3);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    /* Section title */
+    .section-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--gray3);
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      margin-bottom: 0.75rem;
+    }
+
+    /* Attribute tabs */
+    .tabs {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+    .tab {
+      padding: 0.4rem 1rem;
+      border-radius: 6px;
+      border: 1.5px solid var(--gray2);
+      background: var(--white);
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--gray4);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .tab.active {
+      background: var(--navy);
+      border-color: var(--navy);
+      color: var(--white);
+    }
+
+    /* Metrics table */
+    .metrics-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+    .metrics-table th {
+      background: var(--navy);
+      color: var(--white);
+      padding: 0.6rem 0.8rem;
+      text-align: left;
+      font-weight: 600;
+      font-size: 0.78rem;
+      letter-spacing: 0.3px;
+    }
+    .metrics-table td {
+      padding: 0.6rem 0.8rem;
+      border-bottom: 1px solid var(--gray2);
+      color: var(--dark);
+    }
+    .metrics-table tr:last-child td { border-bottom: none; }
+    .metrics-table tr:nth-child(even) td { background: var(--gray1); }
+    .metrics-table td:first-child { font-weight: 600; }
+
+    /* Chart container */
+    .chart-wrap {
+      position: relative;
+      height: 220px;
+      margin: 1rem 0;
+    }
+
+    /* Flag badges */
+    .flag-list { display: flex; flex-direction: column; gap: 0.5rem; }
+    .flag-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      padding: 0.75rem 1rem;
+      background: var(--rbg);
+      border: 1px solid #FECACA;
+      border-radius: 6px;
+      border-left: 3px solid var(--red);
+    }
+    .flag-metric {
+      background: var(--red);
+      color: var(--white);
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 4px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .flag-detail { font-size: 0.85rem; color: var(--red); }
+    .flag-detail strong { font-weight: 700; }
+
+    .no-flags {
+      text-align: center;
+      padding: 1.5rem;
+      color: var(--green);
+      font-weight: 600;
+      font-size: 0.9rem;
+      background: var(--gbg);
+      border-radius: 6px;
+      border: 1px solid #BBF7D0;
+    }
+
+    /* Dataset issues */
+    .issue-item {
+      padding: 0.6rem 1rem;
+      background: #FFFBEB;
+      border: 1px solid #FDE68A;
+      border-left: 3px solid #D97706;
+      border-radius: 6px;
+      font-size: 0.84rem;
+      color: #92400E;
+      margin-bottom: 0.4rem;
+    }
+    .issue-label {
+      font-weight: 700;
+      font-size: 0.72rem;
+      background: #D97706;
+      color: white;
+      padding: 1px 6px;
+      border-radius: 3px;
+      margin-right: 6px;
+    }
+
+    /* Download btn */
+    .btn-download {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: var(--navy);
+      color: var(--white);
+      text-decoration: none;
+      padding: 0.65rem 1.4rem;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: background 0.15s;
+    }
+    .btn-download:hover { background: #162d4a; }
+
+    /* Disclaimer */
+    .disclaimer {
+      font-size: 0.78rem;
+      color: var(--gray3);
+      text-align: center;
+      padding: 1rem;
+      border-top: 1px solid var(--gray2);
+      margin-top: 2rem;
+    }
+
+    /* Responsive */
+    @media (max-width: 640px) {
+      .form-grid { grid-template-columns: 1fr; }
+      .summary-grid { grid-template-columns: 1fr 1fr; }
+      .hero h1 { font-size: 1.6rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav>
+  <div class="nav-brand">
+    ML Bias Detector <span class="nav-badge">v0.1.0</span>
+  </div>
+  <div style="font-size:0.78rem;color:#93C5FD;">
+    Fairness Auditing for Machine Learning
+  </div>
+</nav>
+
+<!-- Hero -->
+<div class="hero">
+  <h1>Is Your Model Fair?</h1>
+  <p>Upload your model and dataset to detect bias across demographic groups. No technical experience required.</p>
+</div>
+
+<!-- Main -->
+<main>
+
+  <!-- Step 1: Configure -->
+  <div class="card">
+    <div class="card-header">
+      <div class="step-badge">1</div>
+      <h2>Configure Your Audit</h2>
+    </div>
+    <div class="card-body">
+      <div class="form-grid">
+
+        <!-- Model path -->
+        <div class="form-group">
+          <label>Model File Path <span class="label-hint">— path to your trained model</span></label>
+          <input type="text" id="model_path" placeholder="models/model.joblib" value="models/model.joblib"/>
+        </div>
+
+        <!-- Dataset path -->
+        <div class="form-group">
+          <label>Dataset File Path <span class="label-hint">— path to your CSV dataset</span></label>
+          <input type="text" id="dataset_path" placeholder="data/adult_test.csv" value="data/adult_test.csv"/>
+        </div>
+
+        <!-- Model name -->
+        <div class="form-group">
+          <label>Model Name <span class="label-hint">— a label for the report</span></label>
+          <input type="text" id="model_name" placeholder="my_model" value="logistic_regression_adult"/>
+        </div>
+
+        <!-- Dataset name -->
+        <div class="form-group">
+          <label>Dataset Name <span class="label-hint">— a label for the report</span></label>
+          <input type="text" id="dataset_name" placeholder="my_dataset" value="adult_income_test"/>
+        </div>
+
+        <!-- Label column -->
+        <div class="form-group">
+          <label>Label Column <span class="label-hint">— the column with the true outcome</span></label>
+          <input type="text" id="label_column" placeholder="income" value="income"/>
+        </div>
+
+        <!-- Positive label -->
+        <div class="form-group">
+          <label>Positive Label <span class="label-hint">— the value that counts as a positive outcome</span></label>
+          <input type="text" id="positive_label" placeholder=">50K" value=">50K"/>
+        </div>
+
+        <!-- Sensitive attributes -->
+        <div class="form-group full">
+          <label>Sensitive Attributes <span class="label-hint">— groups to audit for fairness (press Enter to add)</span></label>
+          <div class="tags-input-wrap" id="attrs-wrap">
+            <span class="tag" data-val="sex">sex <button onclick="removeTag(this)">×</button></span>
+            <span class="tag" data-val="race">race <button onclick="removeTag(this)">×</button></span>
+            <input class="tags-input" id="attrs-input" placeholder="Add attribute..." onkeydown="handleTagInput(event)"/>
+          </div>
+          <div class="tags-hint">E.g. sex, race, age_group — must match column names in your dataset</div>
+        </div>
+
+        <!-- Feature columns -->
+        <div class="form-group full">
+          <label>Feature Columns <span class="label-hint">— columns the model was trained on (press Enter to add)</span></label>
+          <div class="tags-input-wrap" id="feats-wrap">
+            <span class="tag" data-val="age">age <button onclick="removeTag(this)">×</button></span>
+            <span class="tag" data-val="education-num">education-num <button onclick="removeTag(this)">×</button></span>
+            <span class="tag" data-val="capital-gain">capital-gain <button onclick="removeTag(this)">×</button></span>
+            <span class="tag" data-val="capital-loss">capital-loss <button onclick="removeTag(this)">×</button></span>
+            <span class="tag" data-val="hours-per-week">hours-per-week <button onclick="removeTag(this)">×</button></span>
+            <input class="tags-input" id="feats-input" placeholder="Add column..." onkeydown="handleTagInput(event)"/>
+          </div>
+          <div class="tags-hint">These must exactly match the column names used when training the model</div>
+        </div>
+
+        <!-- Threshold -->
+        <div class="form-group full">
+          <label>Disparity Threshold <span class="label-hint">— gaps larger than this will be flagged</span></label>
+          <div class="slider-row">
+            <input type="range" id="threshold" min="0.01" max="0.5" step="0.01" value="0.1"
+              oninput="document.getElementById('threshold-val').textContent = parseFloat(this.value).toFixed(2)"/>
+            <span class="slider-val" id="threshold-val">0.10</span>
+          </div>
+        </div>
+
+      </div>
+
+      <button class="btn-run" id="run-btn" onclick="runAudit()">
+        Run Fairness Audit
+      </button>
+
+      <div class="status running" id="status-running">
+        <div class="spinner"></div>
+        Running audit — this may take a few seconds...
+      </div>
+      <div class="status error" id="status-error"></div>
+    </div>
+  </div>
+
+  <!-- Step 2: Results -->
+  <div id="results">
+
+    <!-- Summary stats -->
+    <p class="section-title">Audit Results</p>
+    <div class="summary-grid" id="summary-cards"></div>
+
+    <!-- Per-attribute results -->
+    <div class="card">
+      <div class="card-header">
+        <div class="step-badge">2</div>
+        <h2>Metrics by Group</h2>
+      </div>
+      <div class="card-body">
+        <div class="tabs" id="attr-tabs"></div>
+        <div id="attr-content"></div>
+      </div>
+    </div>
+
+    <!-- Flagged disparities -->
+    <div class="card">
+      <div class="card-header">
+        <div class="step-badge">3</div>
+        <h2>Flagged Disparities</h2>
+      </div>
+      <div class="card-body">
+        <div id="flags-content"></div>
+      </div>
+    </div>
+
+    <!-- Dataset health -->
+    <div class="card">
+      <div class="card-header">
+        <div class="step-badge">4</div>
+        <h2>Dataset Health Check</h2>
+      </div>
+      <div class="card-body" id="dataset-content"></div>
+    </div>
+
+    <!-- Download -->
+    <div class="card">
+      <div class="card-header">
+        <div class="step-badge">5</div>
+        <h2>Download Report</h2>
+      </div>
+      <div class="card-body" style="display:flex;gap:1rem;flex-wrap:wrap;align-items:center;">
+        <button class="btn-download" onclick="downloadPDF()">
+          ⬇ Download PDF Report
+        </button>
+        <button class="btn-download" onclick="downloadJSON()" style="background:#2C6FAC;">
+          ⬇ Download JSON Report
+        </button>
+        <span style="font-size:0.82rem;color:var(--gray3);">
+          The PDF is formatted for sharing with non-technical stakeholders.
+        </span>
+      </div>
+    </div>
+
+    <div class="disclaimer">
+      These results are descriptive only. They show differences in model performance across groups
+      but do not imply legal or causal conclusions about fairness or discrimination.
+    </div>
+
+  </div>
+</main>
+
+<script>
+  let lastReport = null;
+
+  // ── Tag input logic ────────────────────────────────────────────────────────
+  function handleTagInput(e) {
+    if (e.key !== "Enter" && e.key !== ",") return;
+    e.preventDefault();
+    const input = e.target;
+    const wrap  = input.closest(".tags-input-wrap");
+    const val   = input.value.trim().replace(",", "");
+    if (!val) return;
+    const tag = document.createElement("span");
+    tag.className = "tag";
+    tag.dataset.val = val;
+    tag.innerHTML = `${val} <button onclick="removeTag(this)">×</button>`;
+    wrap.insertBefore(tag, input);
+    input.value = "";
+  }
+
+  function removeTag(btn) {
+    btn.closest(".tag").remove();
+  }
+
+  function getTagValues(wrapId) {
+    return [...document.querySelectorAll(`#${wrapId} .tag`)]
+      .map(t => t.dataset.val);
+  }
+
+  // ── Run audit ──────────────────────────────────────────────────────────────
+  async function runAudit() {
+    const btn = document.getElementById("run-btn");
+    const statusRun = document.getElementById("status-running");
+    const statusErr = document.getElementById("status-error");
+
+    // hide old results
+    document.getElementById("results").style.display = "none";
+    statusRun.className = "status running";
+    statusErr.className = "status";
+    btn.disabled = true;
+    btn.textContent = "Running...";
+
+    const payload = {
+      model_path:           document.getElementById("model_path").value.trim(),
+      dataset_path:         document.getElementById("dataset_path").value.trim(),
+      label_column:         document.getElementById("label_column").value.trim(),
+      positive_label:       document.getElementById("positive_label").value.trim(),
+      sensitive_attributes: getTagValues("attrs-wrap"),
+      feature_columns:      getTagValues("feats-wrap"),
+      threshold:            parseFloat(document.getElementById("threshold").value),
+      model_name:           document.getElementById("model_name").value.trim(),
+      dataset_name:         document.getElementById("dataset_name").value.trim(),
+    };
+
+    try {
+      const res  = await fetch("/audit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Audit failed.");
+
+      lastReport = data;
+      statusRun.className = "status";
+      renderResults(data);
+    } catch(err) {
+      statusRun.className = "status";
+      statusErr.className = "status error";
+      statusErr.textContent = "Error: " + err.message;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Run Fairness Audit";
+    }
+  }
+
+  // ── Render results ─────────────────────────────────────────────────────────
+  function renderResults(report) {
+    const results = report.results_by_attribute || {};
+    const attrs   = Object.keys(results);
+
+    // Summary cards
+    const totalGroups = attrs.reduce((a, k) =>
+      a + Object.keys(results[k].group_metrics || {}).length, 0);
+    const totalFlags  = attrs.reduce((a, k) =>
+      a + (results[k].flagged_results || []).length, 0);
+
+    document.getElementById("summary-cards").innerHTML = `
+      <div class="stat-card">
+        <div class="stat-num">${attrs.length}</div>
+        <div class="stat-label">Attributes Audited</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num">${totalGroups}</div>
+        <div class="stat-label">Groups Evaluated</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num ${totalFlags > 0 ? 'flagged' : ''}">${totalFlags}</div>
+        <div class="stat-label">Disparities Flagged</div>
+      </div>
+    `;
+
+    // Tabs
+    const tabsEl = document.getElementById("attr-tabs");
+    tabsEl.innerHTML = attrs.map((a, i) =>
+      `<div class="tab ${i===0?'active':''}" onclick="switchTab('${a}', this)">${a}</div>`
+    ).join("");
+
+    // Attribute content
+    const contentEl = document.getElementById("attr-content");
+    contentEl.innerHTML = attrs.map((attr, i) => {
+      const gm = results[attr].group_metrics || {};
+      const groups = Object.keys(gm);
+      const metrics = ["accuracy","tpr","fpr","fnr","ppr","precision","f1"];
+      const metricLabels = {
+        accuracy:"Accuracy", tpr:"TPR", fpr:"FPR",
+        fnr:"FNR", ppr:"PPR", precision:"Precision", f1:"F1 Score"
+      };
+
+      const rows = groups.map(g => `
+        <tr>
+          <td>${g}</td>
+          <td>${gm[g].group_size}</td>
+          ${metrics.map(m => `<td>${gm[g][m] ?? '—'}</td>`).join("")}
+        </tr>
+      `).join("");
+
+      return `
+        <div id="tab-${attr}" style="display:${i===0?'block':'none'}">
+          <table class="metrics-table">
+            <thead>
+              <tr>
+                <th>Group</th><th>n</th>
+                ${metrics.map(m => `<th>${metricLabels[m]}</th>`).join("")}
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+      `;
+    }).join("");
+
+    // Flagged disparities
+    const allFlags = attrs.flatMap(attr =>
+      (results[attr].flagged_results || []).map(f => ({...f, attr}))
+    );
+
+    const flagsEl = document.getElementById("flags-content");
+    if (allFlags.length === 0) {
+      flagsEl.innerHTML = `<div class="no-flags">✓ No significant disparities found across any group.</div>`;
+    } else {
+      flagsEl.innerHTML = `<div class="flag-list">${allFlags.map(f => `
+        <div class="flag-item">
+          <span class="flag-metric">${f.metric.toUpperCase()}</span>
+          <span class="flag-detail">
+            <strong>${f.group_a}</strong> vs <strong>${f.group_b}</strong>
+            — disparity of <strong>${f.disparity}</strong>
+            exceeds threshold of ${f.threshold}
+            <span style="color:var(--gray3);font-size:0.78rem;margin-left:4px;">(${f.attr})</span>
+          </span>
+        </div>
+      `).join("")}</div>`;
+    }
+
+    // Dataset health
+    const da = report.dataset_audit || {};
+    const datasetEl = document.getElementById("dataset-content");
+    const allIssues = Object.entries(da).flatMap(([attr, data]) =>
+      (data.flags || []).map(f => ({...f, attr}))
+    );
+
+    if (allIssues.length === 0) {
+      datasetEl.innerHTML = `<div class="no-flags">✓ No dataset issues detected.</div>`;
+    } else {
+      datasetEl.innerHTML = allIssues.map(f => `
+        <div class="issue-item">
+          <span class="issue-label">${f.check.toUpperCase()}</span>
+          ${f.message}
+          <span style="color:#B45309;font-size:0.75rem;margin-left:4px;">(${f.attr})</span>
+        </div>
+      `).join("");
+    }
+
+    document.getElementById("results").style.display = "block";
+    document.getElementById("results").scrollIntoView({ behavior: "smooth" });
+  }
+
+  function switchTab(attr, el) {
+    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+    el.classList.add("active");
+    document.querySelectorAll("[id^='tab-']").forEach(d => d.style.display = "none");
+    document.getElementById(`tab-${attr}`).style.display = "block";
+  }
+
+  // ── Downloads ──────────────────────────────────────────────────────────────
+  async function downloadPDF() {
+    const res = await fetch("/report/pdf");
+    if (!res.ok) { alert("Run an audit first to generate a PDF."); return; }
+    const blob = await res.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href = url; a.download = "audit_report.pdf"; a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function downloadJSON() {
+    if (!lastReport) { alert("Run an audit first."); return; }
+    const blob = new Blob([JSON.stringify(lastReport, null, 2)],
+      { type: "application/json" });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href = url; a.download = "audit_report.json"; a.click();
+    URL.revokeObjectURL(url);
+  }
+</script>
+</body>
+</html>
