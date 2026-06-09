@@ -153,10 +153,10 @@ The report is fully reproducible — the same model, dataset, and config always 
 
 ## Roadmap
 
-- [ ] Additional fairness metrics (Equalized Odds, Predictive Parity)
-- [ ] Multiple sensitive attributes simultaneously
-- [ ] Support for TensorFlow, PyTorch, and ONNX models
-- [ ] Dataset bias detection before training
+- [x] Additional fairness metrics (Equalized Odds, Predictive Parity, F1, FNR)
+- [x] Multiple sensitive attributes simultaneously
+- [x] Support for TensorFlow, PyTorch, and ONNX models
+- [x] Dataset bias detection before training
 - [ ] Automated PDF report generation
 - [ ] REST API endpoint
 - [ ] Front end web interface
