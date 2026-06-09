@@ -1,3 +1,4 @@
 from bias_detector.model_loader import load_model
 from bias_detector.model_loader import load_model
 from bias_detector.dataset_auditor import audit_dataset
+from bias_detector.report_generator import generate_pdf

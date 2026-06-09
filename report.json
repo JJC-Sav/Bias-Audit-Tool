@@ -3,8 +3,166 @@
     "model_path": "models/model.joblib",
     "dataset_name": "adult_income_test",
     "dataset_path": "data/adult_test.csv",
+    "dataset_audit": {
+        "sex": {
+            "checks": {
+                "representation": {
+                    "Male": {
+                        "count": 4065,
+                        "percentage": 67.38,
+                        "small_group_flag": false
+                    },
+                    "Female": {
+                        "count": 1968,
+                        "percentage": 32.62,
+                        "small_group_flag": false
+                    }
+                },
+                "label_distribution": {
+                    "Male": {
+                        "positive_rate": 0.3117,
+                        "positive_count": 1267,
+                        "total": 4065,
+                        "disparity_from_overall": 0.0627,
+                        "flagged": false
+                    },
+                    "Female": {
+                        "positive_rate": 0.1194,
+                        "positive_count": 235,
+                        "total": 1968,
+                        "disparity_from_overall": 0.1296,
+                        "flagged": true
+                    }
+                }
+            },
+            "flags": [
+                {
+                    "check": "label_distribution",
+                    "group": "Female",
+                    "positive_rate": 0.1194,
+                    "overall_positive_rate": 0.249,
+                    "disparity": 0.1296,
+                    "message": "Group 'Female' has a positive label rate of 11.9% vs overall rate of 24.9% (disparity: 0.1296)."
+                }
+            ]
+        },
+        "race": {
+            "checks": {
+                "representation": {
+                    "White": {
+                        "count": 5186,
+                        "percentage": 85.96,
+                        "small_group_flag": false
+                    },
+                    "Black": {
+                        "count": 559,
+                        "percentage": 9.27,
+                        "small_group_flag": false
+                    },
+                    "Asian-Pac-Islander": {
+                        "count": 186,
+                        "percentage": 3.08,
+                        "small_group_flag": false
+                    },
+                    "Amer-Indian-Eskimo": {
+                        "count": 64,
+                        "percentage": 1.06,
+                        "small_group_flag": true
+                    },
+                    "Other": {
+                        "count": 38,
+                        "percentage": 0.63,
+                        "small_group_flag": true
+                    }
+                },
+                "label_distribution": {
+                    "White": {
+                        "positive_rate": 0.264,
+                        "positive_count": 1369,
+                        "total": 5186,
+                        "disparity_from_overall": 0.015,
+                        "flagged": false
+                    },
+                    "Other": {
+                        "positive_rate": 0.0789,
+                        "positive_count": 3,
+                        "total": 38,
+                        "disparity_from_overall": 0.1701,
+                        "flagged": true
+                    },
+                    "Black": {
+                        "positive_rate": 0.1431,
+                        "positive_count": 80,
+                        "total": 559,
+                        "disparity_from_overall": 0.1059,
+                        "flagged": true
+                    },
+                    "Amer-Indian-Eskimo": {
+                        "positive_rate": 0.0938,
+                        "positive_count": 6,
+                        "total": 64,
+                        "disparity_from_overall": 0.1552,
+                        "flagged": true
+                    },
+                    "Asian-Pac-Islander": {
+                        "positive_rate": 0.2366,
+                        "positive_count": 44,
+                        "total": 186,
+                        "disparity_from_overall": 0.0124,
+                        "flagged": false
+                    }
+                }
+            },
+            "flags": [
+                {
+                    "check": "small_group",
+                    "group": "Amer-Indian-Eskimo",
+                    "count": 64,
+                    "message": "Group 'Amer-Indian-Eskimo' has only 64 records \u2014 metrics may be unreliable."
+                },
+                {
+                    "check": "small_group",
+                    "group": "Other",
+                    "count": 38,
+                    "message": "Group 'Other' has only 38 records \u2014 metrics may be unreliable."
+                },
+                {
+                    "check": "imbalance_ratio",
+                    "ratio": 136.47,
+                    "message": "Group size imbalance ratio is 136.47x \u2014 the largest group is 136.47x bigger than the smallest."
+                },
+                {
+                    "check": "label_distribution",
+                    "group": "Other",
+                    "positive_rate": 0.0789,
+                    "overall_positive_rate": 0.249,
+                    "disparity": 0.1701,
+                    "message": "Group 'Other' has a positive label rate of 7.9% vs overall rate of 24.9% (disparity: 0.1701)."
+                },
+                {
+                    "check": "label_distribution",
+                    "group": "Black",
+                    "positive_rate": 0.1431,
+                    "overall_positive_rate": 0.249,
+                    "disparity": 0.1059,
+                    "message": "Group 'Black' has a positive label rate of 14.3% vs overall rate of 24.9% (disparity: 0.1059)."
+                },
+                {
+                    "check": "label_distribution",
+                    "group": "Amer-Indian-Eskimo",
+                    "positive_rate": 0.0938,
+                    "overall_positive_rate": 0.249,
+                    "disparity": 0.1552,
+                    "message": "Group 'Amer-Indian-Eskimo' has a positive label rate of 9.4% vs overall rate of 24.9% (disparity: 0.1552)."
+                }
+            ]
+        }
+    },
     "audit_config": {
-        "sensitive_attribute": "sex",
+        "sensitive_attributes": [
+            "sex",
+            "race"
+        ],
         "label_column": "income",
         "positive_label": ">50K",
         "threshold": 0.1,
@@ -14,42 +172,354 @@
             "capital-gain",
             "capital-loss",
             "hours-per-week"
+        ],
+        "metrics_computed": [
+            "accuracy",
+            "tpr",
+            "fpr",
+            "ppr",
+            "fnr",
+            "precision",
+            "f1",
+            "equalized_odds"
         ]
     },
-    "group_metrics": {
-        "Male": {
-            "group_size": 4065,
-            "TP": 504,
-            "TN": 2625,
-            "FP": 173,
-            "FN": 763,
-            "accuracy": 0.7697,
-            "tpr": 0.3978,
-            "fpr": 0.0618,
-            "ppr": 0.1665
+    "results_by_attribute": {
+        "sex": {
+            "group_metrics": {
+                "Male": {
+                    "group_size": 4065,
+                    "TP": 504,
+                    "TN": 2625,
+                    "FP": 173,
+                    "FN": 763,
+                    "accuracy": 0.7697,
+                    "tpr": 0.3978,
+                    "fpr": 0.0618,
+                    "ppr": 0.1665,
+                    "fnr": 0.6022,
+                    "precision": 0.7445,
+                    "f1": 0.5185
+                },
+                "Female": {
+                    "group_size": 1968,
+                    "TP": 83,
+                    "TN": 1667,
+                    "FP": 66,
+                    "FN": 152,
+                    "accuracy": 0.8892,
+                    "tpr": 0.3532,
+                    "fpr": 0.0381,
+                    "ppr": 0.0757,
+                    "fnr": 0.6468,
+                    "precision": 0.557,
+                    "f1": 0.4323
+                }
+            },
+            "flagged_results": [
+                {
+                    "metric": "accuracy",
+                    "group_a": "Male",
+                    "group_b": "Female",
+                    "value_a": 0.7697,
+                    "value_b": 0.8892,
+                    "disparity": 0.1195,
+                    "threshold": 0.1
+                },
+                {
+                    "metric": "precision",
+                    "group_a": "Male",
+                    "group_b": "Female",
+                    "value_a": 0.7445,
+                    "value_b": 0.557,
+                    "disparity": 0.1875,
+                    "threshold": 0.1
+                }
+            ]
         },
-        "Female": {
-            "group_size": 1968,
-            "TP": 83,
-            "TN": 1667,
-            "FP": 66,
-            "FN": 152,
-            "accuracy": 0.8892,
-            "tpr": 0.3532,
-            "fpr": 0.0381,
-            "ppr": 0.0757
+        "race": {
+            "group_metrics": {
+                "White": {
+                    "group_size": 5186,
+                    "TP": 541,
+                    "TN": 3599,
+                    "FP": 218,
+                    "FN": 828,
+                    "accuracy": 0.7983,
+                    "tpr": 0.3952,
+                    "fpr": 0.0571,
+                    "ppr": 0.1464,
+                    "fnr": 0.6048,
+                    "precision": 0.7128,
+                    "f1": 0.5085
+                },
+                "Other": {
+                    "group_size": 38,
+                    "TP": 1,
+                    "TN": 34,
+                    "FP": 1,
+                    "FN": 2,
+                    "accuracy": 0.9211,
+                    "tpr": 0.3333,
+                    "fpr": 0.0286,
+                    "ppr": 0.0526,
+                    "fnr": 0.6667,
+                    "precision": 0.5,
+                    "f1": 0.4
+                },
+                "Black": {
+                    "group_size": 559,
+                    "TP": 23,
+                    "TN": 467,
+                    "FP": 12,
+                    "FN": 57,
+                    "accuracy": 0.8766,
+                    "tpr": 0.2875,
+                    "fpr": 0.0251,
+                    "ppr": 0.0626,
+                    "fnr": 0.7125,
+                    "precision": 0.6571,
+                    "f1": 0.4
+                },
+                "Amer-Indian-Eskimo": {
+                    "group_size": 64,
+                    "TP": 2,
+                    "TN": 57,
+                    "FP": 1,
+                    "FN": 4,
+                    "accuracy": 0.9219,
+                    "tpr": 0.3333,
+                    "fpr": 0.0172,
+                    "ppr": 0.0469,
+                    "fnr": 0.6667,
+                    "precision": 0.6667,
+                    "f1": 0.4444
+                },
+                "Asian-Pac-Islander": {
+                    "group_size": 186,
+                    "TP": 20,
+                    "TN": 135,
+                    "FP": 7,
+                    "FN": 24,
+                    "accuracy": 0.8333,
+                    "tpr": 0.4545,
+                    "fpr": 0.0493,
+                    "ppr": 0.1452,
+                    "fnr": 0.5455,
+                    "precision": 0.7407,
+                    "f1": 0.5634
+                }
+            },
+            "flagged_results": [
+                {
+                    "metric": "accuracy",
+                    "group_a": "White",
+                    "group_b": "Other",
+                    "value_a": 0.7983,
+                    "value_b": 0.9211,
+                    "disparity": 0.1228,
+                    "threshold": 0.1
+                },
+                {
+                    "metric": "precision",
+                    "group_a": "White",
+                    "group_b": "Other",
+                    "value_a": 0.7128,
+                    "value_b": 0.5,
+                    "disparity": 0.2128,
+                    "threshold": 0.1
+                },
+                {
+                    "metric": "f1",
+                    "group_a": "White",
+                    "group_b": "Other",
+                    "value_a": 0.5085,
+                    "value_b": 0.4,
+                    "disparity": 0.1085,
+                    "threshold": 0.1
+                },
+                {
+                    "metric": "tpr",
+                    "group_a": "White",
+                    "group_b": "Black",
+                    "value_a": 0.3952,
+                    "value_b": 0.2875,
+                    "disparity": 0.1077,
+                    "threshold": 0.1
+                },
+                {
+                    "metric": "fnr",
+                    "group_a": "White",
+                    "group_b": "Black",
+                    "value_a": 0.6048,
+                    "value_b": 0.7125,
+                    "disparity": 0.1077,
+                    "threshold": 0.1
+                },
+                {
+                    "metric": "f1",
+                    "group_a": "White",
+                    "group_b": "Black",
+                    "value_a": 0.5085,
+                    "value_b": 0.4,
+                    "disparity": 0.1085,
+                    "threshold": 0.1
+                },
+                {
+                    "metric": "equalized_odds",
+                    "group_a": "White",
+                    "group_b": "Black",
+                    "value_a": null,
+                    "value_b": null,
+                    "disparity": 0.1077,
+                    "threshold": 0.1
+                },
+                {
+                    "metric": "accuracy",
+                    "group_a": "White",
+                    "group_b": "Amer-Indian-Eskimo",
+                    "value_a": 0.7983,
+                    "value_b": 0.9219,
+                    "disparity": 0.1236,
+                    "threshold": 0.1
+                },
+                {
+                    "metric": "precision",
+                    "group_a": "Other",
+                    "group_b": "Black",
+                    "value_a": 0.5,
+                    "value_b": 0.6571,
+                    "disparity": 0.1571,
+                    "threshold": 0.1
+                },
+                {
+                    "metric": "precision",
+                    "group_a": "Other",
+                    "group_b": "Amer-Indian-Eskimo",
+                    "value_a": 0.5,
+                    "value_b": 0.6667,
+                    "disparity": 0.1667,
+                    "threshold": 0.1
+                },
+                {
+                    "metric": "tpr",
+                    "group_a": "Other",
+                    "group_b": "Asian-Pac-Islander",
+                    "value_a": 0.3333,
+                    "value_b": 0.4545,
+                    "disparity": 0.1212,
+                    "threshold": 0.1
+                },
+                {
+                    "metric": "fnr",
+                    "group_a": "Other",
+                    "group_b": "Asian-Pac-Islander",
+                    "value_a": 0.6667,
+                    "value_b": 0.5455,
+                    "disparity": 0.1212,
+                    "threshold": 0.1
+                },
+                {
+                    "metric": "precision",
+                    "group_a": "Other",
+                    "group_b": "Asian-Pac-Islander",
+                    "value_a": 0.5,
+                    "value_b": 0.7407,
+                    "disparity": 0.2407,
+                    "threshold": 0.1
+                },
+                {
+                    "metric": "f1",
+                    "group_a": "Other",
+                    "group_b": "Asian-Pac-Islander",
+                    "value_a": 0.4,
+                    "value_b": 0.5634,
+                    "disparity": 0.1634,
+                    "threshold": 0.1
+                },
+                {
+                    "metric": "equalized_odds",
+                    "group_a": "Other",
+                    "group_b": "Asian-Pac-Islander",
+                    "value_a": null,
+                    "value_b": null,
+                    "disparity": 0.1212,
+                    "threshold": 0.1
+                },
+                {
+                    "metric": "tpr",
+                    "group_a": "Black",
+                    "group_b": "Asian-Pac-Islander",
+                    "value_a": 0.2875,
+                    "value_b": 0.4545,
+                    "disparity": 0.167,
+                    "threshold": 0.1
+                },
+                {
+                    "metric": "fnr",
+                    "group_a": "Black",
+                    "group_b": "Asian-Pac-Islander",
+                    "value_a": 0.7125,
+                    "value_b": 0.5455,
+                    "disparity": 0.167,
+                    "threshold": 0.1
+                },
+                {
+                    "metric": "f1",
+                    "group_a": "Black",
+                    "group_b": "Asian-Pac-Islander",
+                    "value_a": 0.4,
+                    "value_b": 0.5634,
+                    "disparity": 0.1634,
+                    "threshold": 0.1
+                },
+                {
+                    "metric": "equalized_odds",
+                    "group_a": "Black",
+                    "group_b": "Asian-Pac-Islander",
+                    "value_a": null,
+                    "value_b": null,
+                    "disparity": 0.167,
+                    "threshold": 0.1
+                },
+                {
+                    "metric": "tpr",
+                    "group_a": "Amer-Indian-Eskimo",
+                    "group_b": "Asian-Pac-Islander",
+                    "value_a": 0.3333,
+                    "value_b": 0.4545,
+                    "disparity": 0.1212,
+                    "threshold": 0.1
+                },
+                {
+                    "metric": "fnr",
+                    "group_a": "Amer-Indian-Eskimo",
+                    "group_b": "Asian-Pac-Islander",
+                    "value_a": 0.6667,
+                    "value_b": 0.5455,
+                    "disparity": 0.1212,
+                    "threshold": 0.1
+                },
+                {
+                    "metric": "f1",
+                    "group_a": "Amer-Indian-Eskimo",
+                    "group_b": "Asian-Pac-Islander",
+                    "value_a": 0.4444,
+                    "value_b": 0.5634,
+                    "disparity": 0.119,
+                    "threshold": 0.1
+                },
+                {
+                    "metric": "equalized_odds",
+                    "group_a": "Amer-Indian-Eskimo",
+                    "group_b": "Asian-Pac-Islander",
+                    "value_a": null,
+                    "value_b": null,
+                    "disparity": 0.1212,
+                    "threshold": 0.1
+                }
+            ]
         }
     },
-    "flagged_results": [
-        {
-            "metric": "accuracy",
-            "group_a": "Male",
-            "group_b": "Female",
-            "value_a": 0.7697,
-            "value_b": 0.8892,
-            "disparity": 0.1195,
-            "threshold": 0.1
-        }
-    ],
     "disclaimer": "These results are descriptive only. They show differences in model performance across groups but do not imply legal or causal conclusions."
 }

@@ -8,6 +8,7 @@ import pandas as pd
 from sklearn.metrics import confusion_matrix
 from bias_detector.model_loader import load_model
 from bias_detector.dataset_auditor import audit_dataset
+from bias_detector.report_generator import generate_pdf
 
 # ── 1. Load config ─────────────────────────────────────────────────────────────
 with open("config.json", "r") as f:
@@ -39,7 +40,6 @@ df["prediction"] = predictions
 
 print(f"\nPredictions done — {len(predictions)} total")
 
-# convert label column to 1s and 0s so confusion matrix works
 positive_label = config["positive_label"]
 df["true_label"] = (df[config["label_column"]] == positive_label).astype(int)
 
@@ -52,42 +52,36 @@ def compute_accuracy(TP, TN, FP, FN):
     return (TP + TN) / total
 
 def compute_tpr(TP, TN, FP, FN):
-    # how many actual positives did the model catch?
     denominator = TP + FN
     if denominator == 0:
         return None
     return TP / denominator
 
 def compute_fpr(TP, TN, FP, FN):
-    # how many actual negatives did the model wrongly flag?
     denominator = FP + TN
     if denominator == 0:
         return None
     return FP / denominator
 
 def compute_ppr(TP, TN, FP, FN):
-    # out of all predictions, how often did the model predict positive?
     total = TP + TN + FP + FN
     if total == 0:
         return None
     return (TP + FP) / total
 
 def compute_fnr(TP, TN, FP, FN):
-    # how many actual positives did the model miss?
     denominator = TP + FN
     if denominator == 0:
         return None
     return FN / denominator
 
 def compute_precision(TP, TN, FP, FN):
-    # out of all predicted positives, how many were actually positive?
     denominator = TP + FP
     if denominator == 0:
         return None
     return TP / denominator
 
 def compute_f1(TP, TN, FP, FN):
-    # balance between precision and TPR
     precision = compute_precision(TP, TN, FP, FN)
     tpr = compute_tpr(TP, TN, FP, FN)
     if precision is None or tpr is None:
@@ -97,7 +91,6 @@ def compute_f1(TP, TN, FP, FN):
     return 2 * (precision * tpr) / (precision + tpr)
 
 def compute_equalized_odds(tpr_a, fpr_a, tpr_b, fpr_b):
-    # max gap across TPR and FPR between two groups
     if any(v is None for v in [tpr_a, fpr_a, tpr_b, fpr_b]):
         return None
     tpr_gap = abs(tpr_a - tpr_b)
@@ -105,13 +98,10 @@ def compute_equalized_odds(tpr_a, fpr_a, tpr_b, fpr_b):
     return round(max(tpr_gap, fpr_gap), 4)
 
 def compute_group_metrics(group_df):
-    """Compute all metrics for a single group dataframe."""
     y_true = group_df["true_label"]
     y_pred = group_df["prediction"]
-
     cm = confusion_matrix(y_true, y_pred, labels=[0, 1])
     TN, FP, FN, TP = cm.ravel()
-
     accuracy  = compute_accuracy(TP, TN, FP, FN)
     tpr       = compute_tpr(TP, TN, FP, FN)
     fpr       = compute_fpr(TP, TN, FP, FN)
@@ -119,7 +109,6 @@ def compute_group_metrics(group_df):
     fnr       = compute_fnr(TP, TN, FP, FN)
     precision = compute_precision(TP, TN, FP, FN)
     f1        = compute_f1(TP, TN, FP, FN)
-
     return {
         "group_size": len(group_df),
         "TP": int(TP), "TN": int(TN), "FP": int(FP), "FN": int(FN),
@@ -133,7 +122,6 @@ def compute_group_metrics(group_df):
     }
 
 def run_disparity_analysis(group_metrics, threshold):
-    """Compare every pair of groups and flag metrics over the threshold."""
     metrics_to_check = ["accuracy", "tpr", "fpr", "ppr", "fnr", "precision", "f1"]
     group_list = list(group_metrics.keys())
     flagged_results = []
@@ -142,22 +130,18 @@ def run_disparity_analysis(group_metrics, threshold):
         for j in range(i + 1, len(group_list)):
             group_a = group_list[i]
             group_b = group_list[j]
-
             print(f"\n  Comparing: {group_a} vs {group_b}")
 
             for metric in metrics_to_check:
                 val_a = group_metrics[group_a][metric]
                 val_b = group_metrics[group_b][metric]
-
                 if val_a is None or val_b is None:
                     print(f"    {metric.upper():<12} skipped (missing value)")
                     continue
-
                 disparity = round(abs(val_a - val_b), 4)
                 flagged = disparity > threshold
                 flag_marker = " <- FLAGGED" if flagged else ""
                 print(f"    {metric.upper():<12} {group_a}={val_a:.4f}  {group_b}={val_b:.4f}  diff={disparity:.4f}{flag_marker}")
-
                 if flagged:
                     flagged_results.append({
                         "metric": metric,
@@ -169,7 +153,6 @@ def run_disparity_analysis(group_metrics, threshold):
                         "threshold": threshold
                     })
 
-            # equalized odds check
             eq_odds = compute_equalized_odds(
                 group_metrics[group_a]["tpr"], group_metrics[group_a]["fpr"],
                 group_metrics[group_b]["tpr"], group_metrics[group_b]["fpr"]
@@ -191,7 +174,7 @@ def run_disparity_analysis(group_metrics, threshold):
 
     return flagged_results
 
-# ── 5. Main audit loop — runs for each sensitive attribute ─────────────────────
+# ── 5. Main audit loop ─────────────────────────────────────────────────────────
 threshold = config["threshold"]
 sensitive_attributes = config["sensitive_attributes"]
 all_results = {}
@@ -211,7 +194,6 @@ for attr in sensitive_attributes:
     for group in groups:
         group_df = df[df[attr] == group]
         group_metrics[group] = compute_group_metrics(group_df)
-
         m = group_metrics[group]
         print(f"\nGroup: {group} (n={m['group_size']})")
         print(f"  TP={m['TP']}  TN={m['TN']}  FP={m['FP']}  FN={m['FN']}")
@@ -241,7 +223,7 @@ for attr in sensitive_attributes:
         "flagged_results": flagged
     }
 
-# ── 6. Save full audit report ──────────────────────────────────────────────────
+# ── 6. Save report.json ────────────────────────────────────────────────────────
 report = {
     "model_name":    config["model_name"],
     "model_path":    config["model_path"],
@@ -268,6 +250,12 @@ report = {
 
 with open("report.json", "w") as f:
     json.dump(report, f, indent=4)
+
+# ── 7. Generate PDF report ─────────────────────────────────────────────────────
+print("\nGenerating PDF report...")
+pdf_path = generate_pdf(report, output_path="audit_report.pdf")
+if pdf_path:
+    print(f"  PDF saved to: {pdf_path}")
 
 print(f"\n{'='*60}")
 print("Audit complete. Report saved to report.json")
