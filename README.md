@@ -157,9 +157,9 @@ The report is fully reproducible — the same model, dataset, and config always 
 - [x] Multiple sensitive attributes simultaneously
 - [x] Support for TensorFlow, PyTorch, and ONNX models
 - [x] Dataset bias detection before training
-- [ ] Automated PDF report generation
-- [ ] REST API endpoint
-- [ ] Front end web interface
+- [x] Automated PDF report generation
+- [x] REST API endpoint
+- [x] Front end web interface
 - [ ] Publish as installable package (`pip install ml-bias-detector`)
 
 ---
